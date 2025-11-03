@@ -3,6 +3,7 @@ from fastapi.responses import JSONResponse
 from typing import List, Dict, Optional, Any
 from datetime import datetime
 import requests
+import logging
 from models.a2a import JSONRPCRequest, JSONRPCResponse
 from models.schemas import (
     PackageDependency,
@@ -12,6 +13,13 @@ from models.schemas import (
     OverallHealthResponse
 )
 from a2a_handler import A2AHandler
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 # Initializing the api
 app = FastAPI(
@@ -258,7 +266,9 @@ async def a2a_endpoint(request: JSONRPCRequest):
     
     This endpoint handles JSON-RPC 2.0 requests following the A2A protocol.
     """
+    logger.info(f"A2A endpoint called - method: {request.method}")
     response = await a2a_handler.handle_message(request)
+    logger.info(f"A2A response generated - bytes: {len(str(response.model_dump()))}")
     return JSONResponse(content=response.model_dump())
 
 # Standard API endpoints (keep for backward compatibility)
