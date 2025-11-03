@@ -4,18 +4,20 @@ from datetime import datetime
 from uuid import uuid4
 
 class MessagePart(BaseModel):
+    """A2A Protocol message part - can be text, data, or file"""
     model_config = ConfigDict(extra='allow')
     
-    kind: str  # Changed from Literal to str for flexibility
+    kind: Literal["text", "data", "file"]
     text: Optional[str] = None
     data: Optional[Dict[str, Any]] = None
     file_url: Optional[str] = None
 
 class A2AMessage(BaseModel):
+    """A2A Protocol message"""
     model_config = ConfigDict(extra='allow')
     
-    kind: Optional[str] = "message"  # Made optional
-    role: str  # Changed from Literal to str
+    kind: Literal["message"] = "message"
+    role: Literal["user", "agent", "system"]
     parts: List[MessagePart]
     messageId: Optional[str] = Field(default_factory=lambda: str(uuid4()))
     taskId: Optional[str] = None
@@ -49,17 +51,19 @@ class ExecuteParams(BaseModel):
     messages: List[A2AMessage]
 
 class JSONRPCRequest(BaseModel):
+    """JSON-RPC 2.0 Request for A2A Protocol"""
     model_config = ConfigDict(extra='allow')
     
-    jsonrpc: str  # Changed from Literal to str
+    jsonrpc: Literal["2.0"] = "2.0"
     id: str
-    method: str  # Changed from Literal to str
-    params: Union[MessageParams, ExecuteParams, Dict[str, Any]]  # More flexible
+    method: Literal["message/send", "execute"]
+    params: Union[MessageParams, ExecuteParams]
 
 class TaskStatus(BaseModel):
+    """Task status in A2A Protocol"""
     model_config = ConfigDict(extra='allow')
     
-    state: str  # Changed from Literal to str
+    state: Literal["working", "completed", "input-required", "failed"]
     timestamp: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
     message: Optional[A2AMessage] = None
 
@@ -71,6 +75,7 @@ class Artifact(BaseModel):
     parts: List[MessagePart]
 
 class TaskResult(BaseModel):
+    """Task result in A2A Protocol"""
     model_config = ConfigDict(extra='allow')
     
     id: str
@@ -78,12 +83,13 @@ class TaskResult(BaseModel):
     status: TaskStatus
     artifacts: List[Artifact] = []
     history: List[A2AMessage] = []
-    kind: str = "task"
+    kind: Literal["task"] = "task"
 
 class JSONRPCResponse(BaseModel):
+    """JSON-RPC 2.0 Response"""
     model_config = ConfigDict(extra='allow')
     
-    jsonrpc: str = "2.0"
+    jsonrpc: Literal["2.0"] = "2.0"
     id: str
     result: Optional[TaskResult] = None
     error: Optional[Dict[str, Any]] = None

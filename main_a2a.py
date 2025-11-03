@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from typing import List, Dict, Optional, Any
 from datetime import datetime
@@ -260,16 +260,109 @@ a2a_handler = A2AHandler(package_checker)
 
 # A2A Protocol Endpoint
 @app.post("/a2a", response_model=None)
-async def a2a_endpoint(request: JSONRPCRequest):
+async def a2a_endpoint(request: Request):
     """
     A2A Protocol endpoint for Telex integration
     
     This endpoint handles JSON-RPC 2.0 requests following the A2A protocol.
+    Implements proper request parsing and error handling per JSON-RPC 2.0 spec.
     """
-    logger.info(f"A2A endpoint called - method: {request.method}")
-    response = await a2a_handler.handle_message(request)
-    logger.info(f"A2A response generated - bytes: {len(str(response.model_dump()))}")
-    return JSONResponse(content=response.model_dump())
+    request_id = None
+    
+    try:
+        # Parse raw JSON body
+        try:
+            body = await request.json()
+        except Exception as e:
+            logger.error(f"JSON parse error: {e}")
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "jsonrpc": "2.0",
+                    "id": None,
+                    "error": {
+                        "code": -32700,
+                        "message": "Parse error",
+                        "data": {"details": "Invalid JSON in request body"}
+                    }
+                }
+            )
+        
+        # Extract request ID early for error responses
+        request_id = body.get("id")
+        
+        # Validate JSON-RPC 2.0 structure
+        if body.get("jsonrpc") != "2.0":
+            logger.warning(f"Invalid jsonrpc version: {body.get('jsonrpc')}")
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "jsonrpc": "2.0",
+                    "id": request_id,
+                    "error": {
+                        "code": -32600,
+                        "message": "Invalid Request",
+                        "data": {"details": "jsonrpc must be '2.0'"}
+                    }
+                }
+            )
+        
+        if not request_id:
+            logger.warning("Missing request id")
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "jsonrpc": "2.0",
+                    "id": None,
+                    "error": {
+                        "code": -32600,
+                        "message": "Invalid Request",
+                        "data": {"details": "id is required"}
+                    }
+                }
+            )
+        
+        # Validate and parse with Pydantic
+        try:
+            rpc_request = JSONRPCRequest(**body)
+        except Exception as e:
+            logger.error(f"Pydantic validation error: {e}")
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "jsonrpc": "2.0",
+                    "id": request_id,
+                    "error": {
+                        "code": -32602,
+                        "message": "Invalid params",
+                        "data": {"details": str(e)}
+                    }
+                }
+            )
+        
+        logger.info(f"A2A endpoint called - method: {rpc_request.method}, id: {request_id}")
+        
+        # Process with A2A handler
+        response = await a2a_handler.handle_message(rpc_request)
+        
+        logger.info(f"A2A response generated - bytes: {len(str(response.model_dump()))}")
+        
+        return JSONResponse(content=response.model_dump())
+    
+    except Exception as e:
+        logger.exception(f"Internal error in A2A endpoint: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={
+                "jsonrpc": "2.0",
+                "id": request_id,
+                "error": {
+                    "code": -32603,
+                    "message": "Internal error",
+                    "data": {"details": str(e)}
+                }
+            }
+        )
 
 # Standard API endpoints (keep for backward compatibility)
 @app.get("/")

@@ -35,8 +35,6 @@ class A2AHandler:
         """
         try:
             logger.info(f"A2A request - method: {request.method}, id: {request.id}")
-            if hasattr(request, 'params'):
-                logger.info(f"Request params type: {type(request.params)}")
             
             if request.method == "message/send":
                 return await self._handle_message_send(request)
@@ -50,12 +48,14 @@ class A2AHandler:
                     f"Method not found: {request.method}"
                 )
         except AttributeError as e:
+            logger.error(f"Attribute error in handler: {e}")
             return self._error_response(
                 getattr(request, 'id', 'unknown'),
                 -32602,
                 f"Invalid params: {str(e)}"
             )
         except Exception as e:
+            logger.exception(f"Unexpected error in handler: {e}")
             return self._error_response(
                 getattr(request, 'id', 'unknown'),
                 -32603,
@@ -64,19 +64,14 @@ class A2AHandler:
     
     async def _handle_message_send(self, request: JSONRPCRequest) -> JSONRPCResponse:
         """Handle message/send method"""
-        # Parse params if it's a dict
-        if isinstance(request.params, dict):
-            from models.a2a import MessageParams
-            params = MessageParams(**request.params)
-        else:
-            params = request.params
-            
+        # Access params directly - now properly typed as MessageParams
+        params = request.params
         user_message = params.message
         
         # Extract user's text from message parts
         user_text = self._extract_text_from_message(user_message)
         logger.info(f"Received message with {len(user_message.parts)} parts")
-        logger.info(f"Extracted text (first 200 chars): {user_text[:200]}")
+        logger.info(f"Extracted text (first 200 chars): {user_text[:200] if user_text else '(empty)'}")
         
         # Store in conversation history
         context_id = user_message.taskId or str(uuid4())
@@ -116,13 +111,8 @@ class A2AHandler:
     
     async def _handle_execute(self, request: JSONRPCRequest) -> JSONRPCResponse:
         """Handle execute method"""
-        # Parse params if it's a dict
-        if isinstance(request.params, dict):
-            from models.a2a import ExecuteParams
-            params = ExecuteParams(**request.params)
-        else:
-            params = request.params
-            
+        # Access params directly - now properly typed as ExecuteParams
+        params = request.params
         context_id = params.contextId or str(uuid4())
         
         # Store messages in history
