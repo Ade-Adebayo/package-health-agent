@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Query
 from fastapi.responses import JSONResponse
 from typing import List, Dict, Optional, Any
 from datetime import datetime
@@ -385,9 +385,10 @@ async def root():
         "protocol": "A2A (Agent-to-Agent)",
         "endpoints": {
             "/a2a": "A2A Protocol endpoint (POST - for Telex integration)",
-            "/health": "Check API health",
+            "/health": "Check API health (GET)",
             "/analyze/python": "Analyze Python packages (POST)",
-            "/analyze/npm": "Analyze npm packages (POST)"
+            "/analyze/npm": "Analyze npm packages (POST)",
+            "/check-package": "Check single package health (POST with ?ecosystem=python or ?ecosystem=npm)"
         }
     }
 
@@ -418,13 +419,13 @@ async def analyze_npm_dependencies(request: NpmDependenciesRequest):
     return OverallHealthResponse(**result)
 
 @app.post("/check-package", response_model=PackageHealthResponse)
-async def check_single_package(package: PackageDependency, ecosystem: str):
+async def check_single_package(package: PackageDependency, ecosystem: str = Query(..., description="Ecosystem type: 'python' or 'npm'")):
     """
     Check a single package health
     
     Args:
         package: PackageDependency with name and version
-        ecosystem: "python" or "npm"
+        ecosystem: "python" or "npm" (query parameter)
     """
     if ecosystem not in ["python", "npm"]:
         raise HTTPException(status_code=400, detail="Ecosystem must be 'python' or 'npm'")
