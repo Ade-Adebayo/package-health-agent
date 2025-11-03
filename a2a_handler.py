@@ -64,7 +64,13 @@ class A2AHandler:
     
     async def _handle_message_send(self, request: JSONRPCRequest) -> JSONRPCResponse:
         """Handle message/send method"""
-        params = request.params
+        # Parse params if it's a dict
+        if isinstance(request.params, dict):
+            from models.a2a import MessageParams
+            params = MessageParams(**request.params)
+        else:
+            params = request.params
+            
         user_message = params.message
         
         # Extract user's text from message parts
@@ -110,7 +116,13 @@ class A2AHandler:
     
     async def _handle_execute(self, request: JSONRPCRequest) -> JSONRPCResponse:
         """Handle execute method"""
-        params = request.params
+        # Parse params if it's a dict
+        if isinstance(request.params, dict):
+            from models.a2a import ExecuteParams
+            params = ExecuteParams(**request.params)
+        else:
+            params = request.params
+            
         context_id = params.contextId or str(uuid4())
         
         # Store messages in history
