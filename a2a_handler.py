@@ -6,6 +6,7 @@ from typing import List, Dict, Any
 from uuid import uuid4
 import json
 import re
+import base64
 import logging
 
 logger = logging.getLogger(__name__)
@@ -217,11 +218,11 @@ class A2AHandler:
             elif part.kind == "file" and hasattr(part, 'data') and part.data:
                 # Handle file upload - decode base64 or direct text
                 try:
-                    import base64
                     # Try to decode as base64
                     file_content = base64.b64decode(part.data).decode('utf-8')
                     content_parts.append(file_content)
-                except:
+                except Exception as decode_error:
+                    logger.warning(f"Failed to decode file as base64: {decode_error}")
                     # If not base64, treat as plain text
                     content_parts.append(str(part.data))
             elif part.kind == "data" and hasattr(part, 'data') and part.data:

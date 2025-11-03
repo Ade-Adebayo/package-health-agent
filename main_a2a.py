@@ -173,7 +173,7 @@ def check_pypi_package(package_name: str, current_version: Optional[str]) -> Dic
                 'deprecated': False
             }
     except Exception as e:
-        print(f"Error checking PyPI for {package_name}: {e}")
+        logger.error(f"Error checking PyPI for {package_name}: {e}")
     
     return {'latest_version': None, 'is_outdated': False, 'deprecated': False}
 
@@ -194,7 +194,7 @@ def check_npm_package(package_name: str, current_version: Optional[str]) -> Dict
                 'deprecated': False
             }
     except Exception as e:
-        print(f"Error checking npm for {package_name}: {e}")
+        logger.error(f"Error checking npm for {package_name}: {e}")
     
     return {'latest_version': None, 'is_outdated': False, 'deprecated': False}
 
@@ -224,7 +224,7 @@ def check_vulnerabilities_osv(package_name: str, ecosystem: str) -> List[Dict]:
                     'published': vuln.get('published', '')
                 })
     except Exception as e:
-        print(f"Error checking vulnerabilities for {package_name}: {e}")
+        logger.error(f"Error checking vulnerabilities for {package_name}: {e}")
     
     return vulnerabilities
 
@@ -285,6 +285,17 @@ async def a2a_endpoint(request: Request):
                         "message": "Parse error",
                         "data": {"details": "Invalid JSON in request body"}
                     }
+                }
+            )
+        
+        # Handle empty JSON - return 200 OK
+        if not body or body == {}:
+            logger.info("Received empty JSON, returning 200 OK")
+            return JSONResponse(
+                status_code=200,
+                content={
+                    "status": "ok",
+                    "message": "Empty request received"
                 }
             )
         
